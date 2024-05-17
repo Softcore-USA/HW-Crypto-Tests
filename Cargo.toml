@@ -1,5 +1,5 @@
 [package]
-name = "cipher_testin"
+name = "HW-Crypto-Tests"
 version = "0.1.0"
 edition = "2021"
 
