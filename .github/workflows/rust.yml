@@ -56,7 +56,7 @@ jobs:
       with:
         tag: ${{ github.ref }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        name: Release ${{ github.ref }}
+        name: Release HW-Crypto-Tests - ${{ github.ref }}
         body: "Automated release by GitHub Actions."
         draft: false
         prerelease: false
