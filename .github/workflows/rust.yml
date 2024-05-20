@@ -34,15 +34,15 @@ jobs:
     - name: Archive build
       run: |
         mkdir -p artifacts
-        cp target/release/YOUR_BINARY_NAME.exe artifacts/
+        cp target/release/HW-Crypto-Tests.exe artifacts/
       env:
-        YOUR_BINARY_NAME: your_binary_name_here
+        HW-Crypto-Tests: HW-Crypto-Tests_here
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v3
       with:
         name: build-artifact
-        path: artifacts/YOUR_BINARY_NAME.exe
+        path: artifacts/HW-Crypto-Tests.exe
 
   release:
     needs: build
@@ -73,6 +73,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/YOUR_BINARY_NAME.exe
-        asset_name: YOUR_BINARY_NAME.exe
+        asset_path: ./artifacts/HW-Crypto-Tests.exe
+        asset_name: HW-Crypto-Tests.exe
         asset_content_type: application/octet-stream
