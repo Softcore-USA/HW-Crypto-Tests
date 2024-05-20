@@ -3,12 +3,8 @@ mod util;
 use std::io::{Write};
 use std::thread::sleep;
 use std::time::Duration;
-use aes::cipher::consts::U8;
-use aes::cipher::generic_array::GenericArray;
 use clap::Parser;
 use des::cipher::{Block, BlockEncrypt, Key, KeyInit};
-use rand::Rng;
-use regex::Regex;
 use crate::util::{get_key, get_plaintext};
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug)]
