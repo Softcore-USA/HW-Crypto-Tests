@@ -10,6 +10,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: write  # Ensure the GITHUB_TOKEN has write permission
+
 jobs:
   build:
     runs-on: windows-latest
@@ -27,20 +30,18 @@ jobs:
       run: |
         mkdir -p artifacts
         cp target/release/HW-Crypto-Tests.exe artifacts/
+        tar -czvf artifacts/HW-Crypto-Tests.zip -C artifacts HW-Crypto-Tests.exe
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: build-artifact
-        path: artifacts/HW-Crypto-Tests.exe
+        path: artifacts/HW-Crypto-Tests.zip
 
   release:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-
-    permissions:
-      contents: write
 
     steps:
     - name: Download build artifact
@@ -49,13 +50,24 @@ jobs:
         name: build-artifact
         path: .
 
+    - name: Unzip build artifact
+      run: unzip build-artifact/HW-Crypto-Tests.zip -d build-artifact/
+
     - name: Create GitHub Release
+      id: create_release
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ github.ref }}
-        artifacts: "./artifacts/HW-Crypto-Tests.exe"
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref }}
         body: "Automated release by GitHub Actions."
         draft: false
         prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: build-artifact/HW-Crypto-Tests.exe
+        asset_name: HW-Crypto-Tests.exe
+        asset_content_type: application/octet-stream
