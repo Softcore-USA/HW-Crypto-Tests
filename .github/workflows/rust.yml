@@ -10,7 +10,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-
 jobs:
   build:
     runs-on: windows-latest
@@ -28,22 +27,21 @@ jobs:
       run: |
         mkdir -p artifacts
         cp target/release/HW-Crypto-Tests.exe artifacts/
-        tar -czvf artifacts/HW-Crypto-Tests.zip -C artifacts HW-Crypto-Tests.exe
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: build-artifact
-        path: artifacts/HW-Crypto-Tests.zip
+        path: artifacts/HW-Crypto-Tests.exe
 
   release:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
+
     permissions:
       contents: write
-      
+
     steps:
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -55,7 +53,7 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ github.ref }}
-        artifacts: "./artifacts/HW-Crypto-Tests.zip"
+        artifacts: "./artifacts/HW-Crypto-Tests.exe"
         token: ${{ secrets.GITHUB_TOKEN }}
         name: Release ${{ github.ref }}
         body: "Automated release by GitHub Actions."
