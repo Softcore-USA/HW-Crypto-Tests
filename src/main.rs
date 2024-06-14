@@ -29,7 +29,7 @@ fn main() {
                         info!(" - PID: {}", info.pid);
                         info!(" - Serial Number: {:?}", info.serial_number);
 
-                        if info.pid == 8 && info.vid == 1204 {
+                        if (info.pid == 8 && info.vid == 1204) || (info.pid == 24577 && info.vid == 1027) {
                             info!("Found test device...");
                             port_name = port.port_name.clone();
                             break;
