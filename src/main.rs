@@ -1,7 +1,7 @@
 mod cli;
 mod cipher_types;
+mod config_handler;
 
-use std::io::{Write};
 use std::thread::sleep;
 use std::time::Duration;
 use clap::Parser;
@@ -13,6 +13,7 @@ use crate::cli::Cli;
 fn main() {
     SimpleLogger::new().init().unwrap();
     let cli = Cli::parse();
+    let config = cli.get_config();
 
     let mut port_name = String::new();
     let baud_rate = 115200;
@@ -59,22 +60,22 @@ fn main() {
     let mut matches = 0;
     let mut total = 0;
 
-    let (key_change, hw_enc) = cli.get_commands();
+    let (kc_cmd, enc_cmd) = cli.get_commands();
 
 
     loop {
         let key = cli.get_key();
+
+        if cli.get_send_key_flag() == true {
+            // Write key to design, send an CMD_DES_KEYCHANGE command first
+            port.write(&[kc_cmd]).unwrap();
+            port.write(key.as_slice()).unwrap();
+        }
+
         let plaintext= cli.get_plaintext();
 
-
-
-
-        // Write key to design, send an CMD_DES_KEYCHANGE command first
-        port.write(&[key_change]).unwrap();
-        port.write(key.as_slice()).unwrap();
-
         // Write plaintext to design, send an CMD_HWDES_ENC command first
-        port.write(&[hw_enc]).unwrap();
+        port.write(&[enc_cmd]).unwrap();
         port.write(plaintext.as_slice()).unwrap();
 
         // Need to let the writes propagate through serial to the design
