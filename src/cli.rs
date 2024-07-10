@@ -52,14 +52,7 @@ impl Cli {
     pub fn init_config(&mut self){
         if self.config_path.is_some() {
             let error_path = "./config.ini".to_string();
-            self.config = Some(Config::new(&PathBuf::from(self.config_path.as_ref().unwrap_or_else(|| {
-                if self.config_path.is_none() {
-                    warn!("No config path specified. Using default: ./config.ini")
-                } else {
-                    warn!("Failed to load config at {:?}. Using default: ./config.ini", self.config_path);
-                }
-                &error_path
-            }))));
+            self.config = Some(Config::new());
         } else {
             self.config = None;
         }
@@ -111,18 +104,8 @@ impl Cli {
     pub fn get_plaintext(&self) -> Vec<u8> {
         let mut rng = rand::thread_rng();
 
-        if self.config.is_some() {
-            let t = match self.cipher {
-                CipherTypes::HWAES => self.config.clone().unwrap().read_item("default values".to_string(), "aes_plaintext".to_string()),
-                CipherTypes::HWDES => self.config.clone().unwrap().read_item("default values".to_string(), "des_plaintext".to_string()),
-                CipherTypes::SWAES => self.config.clone().unwrap().read_item("default values".to_string(), "aes_plaintext".to_string()),
-                CipherTypes::SWDES => self.config.clone().unwrap().read_item("default values".to_string(), "des_plaintext".to_string())
-            };
-
-            hex::decode(t.clone()).unwrap_or_else(|e| {
-                error!("Failed to convert config value to Hex: {}. ERROR: {}", t, e);
-                panic!()
-            })
+        if let Some(config) = &self.config {
+            config.get_cipher_plaintext(self.cipher)
         } else if let Some(plaintext) = self.plaintext.as_deref() {
             let val = utils::validate_text(plaintext, self.cipher).expect("Invalid plaintext");
             info!("Using Plaintext: {}", plaintext);
@@ -144,18 +127,8 @@ impl Cli {
     pub fn get_key(&self) -> Vec<u8> {
         let mut rng = rand::thread_rng();
 
-        if self.config.is_some() {
-            let t = match self.cipher {
-                CipherTypes::HWAES => self.config.clone().unwrap().read_item("default values".to_string(), "aes_key".to_string()),
-                CipherTypes::HWDES => self.config.clone().unwrap().read_item("default values".to_string(), "des_key".to_string()),
-                CipherTypes::SWAES => self.config.clone().unwrap().read_item("default values".to_string(), "aes_key".to_string()),
-                CipherTypes::SWDES => self.config.clone().unwrap().read_item("default values".to_string(), "des_key".to_string())
-            };
-
-            hex::decode(t.clone()).unwrap_or_else(|e| {
-                error!("Failed to convert config value to Hex: {}. ERROR: {}", t, e);
-                panic!()
-            })
+        if let Some(config) = &self.config {
+            config.get_cipher_key(self.cipher)
         } else if let Some(key) = self.key.as_deref() {
             let val = utils::validate_text(key, self.cipher).expect("Invalid plaintext");
             info!("Using Key: {}", key);
