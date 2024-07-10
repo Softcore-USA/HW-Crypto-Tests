@@ -1,4 +1,8 @@
-use std::fmt::write;
+const AES_KEY_DEFAULT: [u8; 16] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
+const DES_KEY_DEFAULT: [u8; 8] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF];
+const AES_PLAINTEXT_DEFAULT: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const DES_PLAINTEXT_DEFAULT: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug)]
 pub enum CipherTypes {
@@ -15,6 +19,24 @@ impl CipherTypes {
             CipherTypes::HWDES => 8,
             CipherTypes::SWAES => 16,
             CipherTypes::SWDES => 8
+        }
+    }
+
+    pub fn default_key(&self) -> Vec<u8> {
+        match self {
+            CipherTypes::HWAES => AES_KEY_DEFAULT.to_vec(),
+            CipherTypes::HWDES => DES_KEY_DEFAULT.to_vec(),
+            CipherTypes::SWAES => AES_KEY_DEFAULT.to_vec(),
+            CipherTypes::SWDES => DES_KEY_DEFAULT.to_vec()
+        }
+    }
+
+    pub fn default_plaintext(&self) -> Vec<u8> {
+        match self {
+            CipherTypes::HWAES => AES_PLAINTEXT_DEFAULT.to_vec(),
+            CipherTypes::HWDES => DES_PLAINTEXT_DEFAULT.to_vec(),
+            CipherTypes::SWAES => AES_PLAINTEXT_DEFAULT.to_vec(),
+            CipherTypes::SWDES => DES_PLAINTEXT_DEFAULT.to_vec()
         }
     }
 }

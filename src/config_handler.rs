@@ -1,15 +1,21 @@
+
 use ini;
 use std::{fs, io};
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use std::ops::Index;
+use clap::Parser;
 
-const DEFAULT_CONFIG: &str = r#"
-    [Default Values]
-    aes_key = CAFEBABEDEADBEEF
-    des_key =
+const DEFAULT_CONFIG: &str = r#"# Config for default values when using the tool
+[Default Values]
+aes_key = 0xCAFEBABEDEADBEEF0001020304050607
+des_key = 0xCAFEBABEDEADBEEF
+aes_plaintext = 0x00000000000000000000000000000000
+des_plaintext = 0x0000000000000000
 "#;
 
 /// Config type
+#[derive(Clone, Debug)]
 pub struct Config {
     pub config_path: PathBuf,
     data: HashMap<String, HashMap<String, Option<String>>>
@@ -34,7 +40,7 @@ impl Config {
 
     /// Unsafe read given a section header and key value
     pub fn read_item(&self, section_key: String, key: String) -> String {
-        self.data[&section_key][&key].clone().unwrap()
+        self.data[&section_key].unwrap()[&key].unwrap().clone().unwrap()
     }
 
     /// Unsafe read given a section header and key value
@@ -57,7 +63,8 @@ impl Config {
          match Path::new(config_path.as_path()).try_exists()? {
              true => Ok(()),
              false => {
-                 fs::create_dir(config_path)?;
+                 log::warn!("No config file found at path: {:?}, Generating default config...", config_path.to_str());
+                 fs::write(config_path, DEFAULT_CONFIG)?;
                  Ok(())
              }
          }

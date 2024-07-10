@@ -1,6 +1,7 @@
 mod cli;
 mod cipher_types;
 mod config_handler;
+mod utils;
 
 use std::thread::sleep;
 use std::time::Duration;
@@ -12,8 +13,8 @@ use crate::cli::Cli;
 
 fn main() {
     SimpleLogger::new().init().unwrap();
-    let cli = Cli::parse();
-    let config = cli.get_config();
+    let mut cli = Cli::parse();
+    cli.init_config();
 
     let mut port_name = String::new();
     let baud_rate = 115200;
@@ -51,7 +52,7 @@ fn main() {
     }
 
     let mut port = serialport::new(port_name, baud_rate)
-        .timeout(std::time::Duration::from_millis(2))
+        .timeout(Duration::from_millis(2))
         .open()
         .expect("Failed to open port...");
     let mut serial_buf = [0u8; 32];
@@ -65,14 +66,13 @@ fn main() {
 
     loop {
         let key = cli.get_key();
+        let plaintext = cli.get_plaintext();
 
-        if cli.get_send_key_flag() == true {
+        if cli.key_send_flag == true || cli.use_random_keys == true {
             // Write key to design, send an CMD_DES_KEYCHANGE command first
             port.write(&[kc_cmd]).unwrap();
             port.write(key.as_slice()).unwrap();
         }
-
-        let plaintext= cli.get_plaintext();
 
         // Write plaintext to design, send an CMD_HWDES_ENC command first
         port.write(&[enc_cmd]).unwrap();
