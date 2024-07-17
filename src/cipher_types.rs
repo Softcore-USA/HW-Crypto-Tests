@@ -1,10 +1,12 @@
+use serde::{Deserialize, Serialize};
+
 const AES_KEY_DEFAULT: [u8; 16] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
 const DES_KEY_DEFAULT: [u8; 8] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF];
 const AES_PLAINTEXT_DEFAULT: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const DES_PLAINTEXT_DEFAULT: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 
 
-#[derive(clap::ValueEnum, Copy, Clone, Debug)]
+#[derive(clap::ValueEnum, Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum CipherTypes {
     HWAES,
     HWDES,
@@ -15,10 +17,8 @@ pub enum CipherTypes {
 impl CipherTypes {
     pub fn cipher_length(&self) -> usize {
         match self {
-            CipherTypes::HWAES => 16,
-            CipherTypes::HWDES => 8,
-            CipherTypes::SWAES => 16,
-            CipherTypes::SWDES => 8
+            CipherTypes::SWAES | CipherTypes::HWAES => 16,
+            CipherTypes::SWDES | CipherTypes::HWDES => 8
         }
     }
 

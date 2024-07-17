@@ -1,19 +1,11 @@
-use std::{fs, io};
-use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 use std::io::Write;
-use std::ops::Index;
-use aes::Aes128;
-use aes::cipher::{Block, Key};
-use clap::Parser;
-use des::Des;
 use serde::{Serialize, Deserialize, Serializer};
-use serde::de::Unexpected::Str;
 use std::string::String;
-use serde_bytes::Bytes;
-use log;
+use std::time::Duration;
+use rand::Rng;
 use serde::Deserializer;
-use serde_bytes::ByteBuf;
 use crate::cipher_types::CipherTypes;
 
 const AES_KEY_DEFAULT: [u8; 16] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
@@ -21,8 +13,8 @@ const DES_KEY_DEFAULT: [u8; 8] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF
 const AES_PLAINTEXT_DEFAULT: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const DES_PLAINTEXT_DEFAULT: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
 const RUNS_DEFAULT: Option<u32> = None;
-
-
+const DELAY_DEFAULT: Option<u32> = None;
+const ALGORITHM_DEFAULT: CipherTypes = CipherTypes::HWDES;
 
 
 
@@ -33,23 +25,27 @@ pub struct Config {
         serialize_with = "serialize_hex",
         deserialize_with = "deserialize_hex"
     )]
-    aes_key: Vec<u8>,
+    pub(crate) key: Vec<u8>,
+    // #[serde(
+    //     serialize_with = "serialize_hex",
+    //     deserialize_with = "deserialize_hex"
+    // )]
+    // pub(crate) des_key: Vec<u8>,
+    // #[serde(
+    //     serialize_with = "serialize_hex",
+    //     deserialize_with = "deserialize_hex"
+    // )]
+    // pub(crate) aes_plaintext: Vec<u8>,
     #[serde(
         serialize_with = "serialize_hex",
         deserialize_with = "deserialize_hex"
     )]
-    des_key: Vec<u8>,
-    #[serde(
-        serialize_with = "serialize_hex",
-        deserialize_with = "deserialize_hex"
-    )]
-    aes_plaintext: Vec<u8>,
-    #[serde(
-        serialize_with = "serialize_hex",
-        deserialize_with = "deserialize_hex"
-    )]
-    des_plaintext: Vec<u8>,
-    runs: Option<u32>,
+    pub(crate) plaintext: Vec<u8>,
+    pub runs: Option<u32>,
+    pub delay: Option<u32>,
+    pub algorithm: CipherTypes,
+    pub random_keys: Option<bool>,
+    pub random_plaintext: Option<bool>
 }
 
 fn serialize_hex<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
@@ -71,8 +67,7 @@ where
 
 impl Config {
 
-    pub fn new() -> Self {
-        let path = "config.toml";
+    pub fn new(path: &String) -> Self {
         if Path::new(path).exists() {
             log::info!("Found config. Loading...");
             let toml_str = fs::read_to_string(path).expect("Failed to read config file");
@@ -89,29 +84,53 @@ impl Config {
         }
     }
 
-    pub fn get_cipher_plaintext(&self, cipher_type: CipherTypes) -> Vec<u8>{
-        match cipher_type {
-            CipherTypes::HWAES | CipherTypes::SWAES => self.aes_plaintext.clone(),
-            CipherTypes::HWDES | CipherTypes::SWDES => self.des_plaintext.clone(),
+    pub fn get_delay(&self) -> Duration {
+        let d = self.delay.unwrap();
+        match self.algorithm {
+            CipherTypes::HWAES => {Duration::from_millis(5 + d as u64)}
+            CipherTypes::HWDES => {Duration::from_millis(3 + d as u64)}
+            CipherTypes::SWAES => {Duration::from_millis(20 + d as u64)}
+            CipherTypes::SWDES => {Duration::from_millis(20 + d as u64)}
         }
     }
+    pub fn get_plaintext(&self) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
 
-    pub fn get_cipher_key(&self, cipher_type: CipherTypes) -> Vec<u8>{
-        match cipher_type {
-            CipherTypes::HWAES | CipherTypes::SWAES => self.aes_key.clone(),
-            CipherTypes::HWDES | CipherTypes::SWDES => self.des_key.clone(),
+        if let Some(urk) = self.random_plaintext {
+            if urk {
+                (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+            }
         }
+        self.plaintext.clone()
+    }
+
+    /// Get current key if set and validate it for the set cipher, or generates a new one if `self.use_random_keys` is set.
+    pub fn get_key(&self) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+
+        if let Some(urk) = self.random_keys {
+            if urk {
+                (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+            }
+        }
+        self.key.clone()
     }
 }
 
 impl Default for Config{
     fn default() -> Self {
         Config{
-            aes_key: AES_KEY_DEFAULT.to_vec(),
-            des_key: DES_KEY_DEFAULT.to_vec(),
-            aes_plaintext: AES_PLAINTEXT_DEFAULT.to_vec(),
-            des_plaintext: DES_PLAINTEXT_DEFAULT.to_vec(),
-            runs: RUNS_DEFAULT
+            // aes_key: AES_KEY_DEFAULT.to_vec(),
+            // des_key: DES_KEY_DEFAULT.to_vec(),
+            // aes_plaintext: AES_PLAINTEXT_DEFAULT.to_vec(),
+            // des_plaintext: DES_PLAINTEXT_DEFAULT.to_vec(),
+            key: DES_KEY_DEFAULT.to_vec(),
+            plaintext: DES_PLAINTEXT_DEFAULT.to_vec(),
+            runs: RUNS_DEFAULT,
+            delay: DELAY_DEFAULT,
+            algorithm: ALGORITHM_DEFAULT,
+            random_keys: None,
+            random_plaintext: None,
         }
     }
 }

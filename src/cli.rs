@@ -1,11 +1,6 @@
-use std::path::PathBuf;
-use std::time::Duration;
 use aes::cipher::{Block, BlockCipherEncrypt, Key};
 use clap::Parser;
 use des::cipher::KeyInit;
-use log::{error, info, warn};
-use rand::Rng;
-use regex::Regex;
 use crate::cipher_types::CipherTypes;
 use crate::config_handler::Config;
 use crate::utils;
@@ -44,22 +39,49 @@ pub struct Cli {
     #[arg(long)]
     pub use_random_plaintext: bool,
     #[arg(skip)]
-    config: Option<Config>,
+    pub config: Config,
 }
 
 
 impl Cli {
+
     pub fn init_config(&mut self){
-        if self.config_path.is_some() {
-            let error_path = "./config.ini".to_string();
-            self.config = Some(Config::new());
+        if let Some(path) = self.config_path.clone() {
+            self.config = Config::new(&path)
         } else {
-            self.config = None;
+            let pt = if let Some(plaintext) = self.plaintext.as_deref() {
+                utils::validate_text(plaintext, self.cipher).expect("Invalid plaintext")
+            } else if let Some(plaintext) = self.plaintext_hex.as_deref() {
+                utils::validate_hex(plaintext, self.cipher).expect("Invalid Hex");
+                hex::decode(plaintext).expect("Failed to decode Hex from cli input")
+            } else {
+                self.cipher.default_plaintext()
+            };
+
+            let k = if let Some(key) = self.key.as_deref() {
+                utils::validate_text(key, self.cipher).expect("Invalid plaintext")
+            } else if let Some(key) = self.key_hex.as_deref() {
+                utils::validate_hex(key, self.cipher).expect("Invalid Hex");
+                hex::decode(key).expect("Failed to decode Hex from cli input")
+            } else {
+                self.cipher.default_key()
+            };
+
+
+            self.config = Config {
+                key: k,
+                plaintext: pt,
+                runs: self.runs,
+                delay: self.delay,
+                algorithm: self.cipher,
+                random_keys: Some(self.use_random_keys),
+                random_plaintext: Some(self.use_random_plaintext)
+            }
         }
     }
 
     pub fn get_commands(&self) -> (u8, u8) {
-        match self.cipher {
+        match self.config.algorithm {
             CipherTypes::HWAES => {(CMD_AES128_KEYCHANGE, CMD_HWAES128_ENC)}
             CipherTypes::HWDES => {(CMD_DES_KEYCHANGE, CMD_HWDES_ENC)}
             CipherTypes::SWAES => {(CMD_AES128_KEYCHANGE, CMD_SWAES128_ENC)}
@@ -68,7 +90,7 @@ impl Cli {
     }
     
     pub fn generate_encrypted_block(&self, key: Vec<u8>, plaintext: Vec<u8>) -> Vec<u8>{
-        match self.cipher {
+        match self.config.algorithm {
             CipherTypes::HWAES => {
                 let aes = aes::Aes128::new(Key::<aes::Aes128>::from_slice(&key));
                 let mut block= *Block::<aes::Aes128>::from_slice(plaintext.as_slice());
@@ -98,72 +120,16 @@ impl Cli {
     }
 
     pub fn cipher_length(&self) -> usize {
-        self.cipher.cipher_length()
-    }
-
-    pub fn get_plaintext(&self) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-
-        if let Some(config) = &self.config {
-            config.get_cipher_plaintext(self.cipher)
-        } else if let Some(plaintext) = self.plaintext.as_deref() {
-            let val = utils::validate_text(plaintext, self.cipher).expect("Invalid plaintext");
-            info!("Using Plaintext: {}", plaintext);
-
-            val
-        } else if let Some(plaintext) = self.plaintext_hex.as_deref() {
-            utils::validate_hex(plaintext, self.cipher).expect("Invalid Hex");
-            info!("Using Plaintext: {}", plaintext);
-
-            hex::decode(plaintext).expect("Failed to decode Hex from cli input")
-        } else if self.use_random_plaintext {
-            (0..self.cipher.cipher_length()).map(|_| rng.gen()).collect()
-        } else {
-            self.cipher.default_plaintext()
+        match !(self.key_send_flag || self.use_random_keys) {
+            true => 0,
+            false => self.config.algorithm.cipher_length()
         }
     }
 
-    /// Get current key if set and validate it for the set cipher, or generates a new one if `self.use_random_keys` is set.
-    pub fn get_key(&self) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-
-        if let Some(config) = &self.config {
-            config.get_cipher_key(self.cipher)
-        } else if let Some(key) = self.key.as_deref() {
-            let val = utils::validate_text(key, self.cipher).expect("Invalid plaintext");
-            info!("Using Key: {}", key);
-
-            val
-        } else if let Some(key) = self.key_hex.as_deref() {
-            utils::validate_hex(key, self.cipher).expect("Invalid Hex");
-            info!("Using Key: {:02x?}", hex::decode(key).expect("Failed to decode Hex from cli input"));
-
-            hex::decode(key).expect("Failed to decode Hex from cli input")
-        } else if self.use_random_keys {
-            (0..self.cipher.cipher_length()).map(|_| rng.gen()).collect()
-        } else {
-            self.cipher.default_key()
-        }
-    }
-
-    pub fn get_delay(&self) -> Duration {
-        let d = self.delay.unwrap_or(0);
-
-        match self.cipher {
-            CipherTypes::HWAES => {Duration::from_millis(3 + d as u64)}
-            CipherTypes::HWDES => {Duration::from_millis(3 + d as u64)}
-            CipherTypes::SWAES => {Duration::from_millis(20 + d as u64)}
-            CipherTypes::SWDES => {Duration::from_millis(20 + d as u64)}
-        }
-    }
 
     pub fn is_finished(&self, total_runs: u32) -> bool{
-        if let Some(count) = self.runs {
+        if let Some(count) = self.config.runs {
             if total_runs + 1 > count {
-                return true;
-            }
-        } else {
-            if self.key_hex.is_some() && self.plaintext_hex.is_some() {
                 return true;
             }
         }

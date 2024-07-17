@@ -17,7 +17,7 @@ pub fn validate_hex(hex: &str, cipher_types: CipherTypes) -> Result<(), String> 
     let expected_length = cipher_types.cipher_length() * 2;
 
     let hex_regex = Regex::new(r"^[0-9a-fA-F]+$").unwrap();
-    if !hex_regex.is_match(&hex) || hex.len() != expected_length {
+    if !hex_regex.is_match(hex) || hex.len() != expected_length {
         return Err(format!(
             "Hex key must be exactly {} characters long and contain valid hexadecimal characters",
             expected_length

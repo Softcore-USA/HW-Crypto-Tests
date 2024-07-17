@@ -7,6 +7,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use clap::Parser;
 use log::{error, info, warn};
+use serialport::SerialPortType;
 use simple_logger::SimpleLogger;
 use crate::cli::Cli;
 
@@ -24,20 +25,17 @@ fn main() {
             info!("Available ports:");
             for port in ports {
                 info!("Port: {}", port.port_name);
-                match port.port_type {
-                    serialport::SerialPortType::UsbPort(info) => {
-                        info!("Type: USB");
-                        info!(" - VID: {}", info.vid);
-                        info!(" - PID: {}", info.pid);
-                        info!(" - Serial Number: {:?}", info.serial_number);
+                if let SerialPortType::UsbPort(info) = port.port_type {
+                    info!("Type: USB");
+                    info!(" - VID: {}", info.vid);
+                    info!(" - PID: {}", info.pid);
+                    info!(" - Serial Number: {:?}", info.serial_number);
 
-                        if (info.pid == 8 && info.vid == 1204) || (info.pid == 24577 && info.vid == 1027) {
-                            info!("Found test device...");
-                            port_name = port.port_name.clone();
-                            break;
-                        }
+                    if (info.pid == 8 && info.vid == 1204) || (info.pid == 24577 && info.vid == 1027) {
+                        info!("Found test device...");
+                        port_name = port.port_name.clone();
+                        break;
                     }
-                    _ => {}
                 }
             }
 
@@ -65,10 +63,10 @@ fn main() {
 
 
     loop {
-        let key = cli.get_key();
-        let plaintext = cli.get_plaintext();
+        let key = cli.config.get_key().clone();
+        let plaintext = cli.config.get_plaintext().clone();
 
-        if cli.key_send_flag == true || cli.use_random_keys == true {
+        if cli.key_send_flag || cli.use_random_keys {
             // Write key to design, send an CMD_DES_KEYCHANGE command first
             port.write(&[kc_cmd]).unwrap();
             port.write(key.as_slice()).unwrap();
@@ -79,7 +77,7 @@ fn main() {
         port.write(plaintext.as_slice()).unwrap();
 
         // Need to let the writes propagate through serial to the design
-        sleep(cli.get_delay());
+        sleep(cli.config.get_delay());
 
         // Read from serial into the buffer
         match port.read(&mut serial_buf[..]) {
@@ -104,6 +102,8 @@ fn main() {
                 error!("{}", e)
             }
         }
+
+
 
         if cli.is_finished(total) {
             return;
