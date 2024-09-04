@@ -1,3 +1,5 @@
+extern crate core;
+
 mod cli;
 mod cipher_types;
 mod config_handler;
@@ -61,6 +63,25 @@ fn main() {
 
     let (kc_cmd, enc_cmd) = cli.get_commands();
 
+    // Initial Write of Key
+    port.write(&[kc_cmd]).unwrap();
+    port.write(cli.config.get_key().clone().as_slice()).unwrap();
+    sleep(cli.config.get_delay());
+    
+    // Read from serial into the buffer
+    match port.read(&mut serial_buf[..]) {
+        Ok(buf) => {
+            if buf == 0 {
+                error!("Failed to set key: buffer empty.")
+            } else {
+                let len = cli.config.algorithm.cipher_length();
+                info!("Initial Key Set: {:02x?} ?= {:02x?}", cli.config.get_key(), &serial_buf[0..len])
+            }
+        }
+        Err(e) => {
+            error!("Initial Key Port Read Failed: {}", e)
+        }
+    }
 
     loop {
         let key = cli.config.get_key().clone();
@@ -84,6 +105,7 @@ fn main() {
             Ok(t) => {
                 let len = cli.cipher_length();
                 let hw_buf = &serial_buf[len..t];
+
                 total += 1;
 
                 let block = cli.generate_encrypted_block(key, plaintext);
@@ -92,7 +114,7 @@ fn main() {
                 if block.eq(hw_buf) {
                     matches += 1;
 
-                    info!("{:02x?} : Tests passed {}/{}", block, matches, total);
+                    info!("{:02x?} : Tests passed {}/{}", block, matches, total + 1);
                 } else {
                     warn!("{:02x?} {:02x?} : Test Failed", block, hw_buf);
                     sleep(Duration::from_secs(2));
@@ -106,7 +128,7 @@ fn main() {
 
 
         if cli.is_finished(total) {
-            return;
+            break;
         }
     }
 

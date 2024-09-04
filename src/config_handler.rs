@@ -26,21 +26,13 @@ pub struct Config {
         deserialize_with = "deserialize_hex"
     )]
     pub(crate) key: Vec<u8>,
-    // #[serde(
-    //     serialize_with = "serialize_hex",
-    //     deserialize_with = "deserialize_hex"
-    // )]
-    // pub(crate) des_key: Vec<u8>,
-    // #[serde(
-    //     serialize_with = "serialize_hex",
-    //     deserialize_with = "deserialize_hex"
-    // )]
-    // pub(crate) aes_plaintext: Vec<u8>,
+
     #[serde(
         serialize_with = "serialize_hex",
         deserialize_with = "deserialize_hex"
     )]
     pub(crate) plaintext: Vec<u8>,
+
     pub runs: Option<u32>,
     pub delay: Option<u32>,
     pub algorithm: CipherTypes,
@@ -93,26 +85,28 @@ impl Config {
             CipherTypes::SWDES => {Duration::from_millis(20 + d as u64)}
         }
     }
-    pub fn get_plaintext(&self) -> Vec<u8> {
+    pub fn get_plaintext(&mut self) -> Vec<u8> {
         let mut rng = rand::thread_rng();
 
         if let Some(urk) = self.random_plaintext {
             if urk {
-                (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+                self.plaintext = (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
             }
         }
+
         self.plaintext.clone()
     }
 
     /// Get current key if set and validate it for the set cipher, or generates a new one if `self.use_random_keys` is set.
-    pub fn get_key(&self) -> Vec<u8> {
+    pub fn get_key(&mut self) -> Vec<u8> {
         let mut rng = rand::thread_rng();
 
         if let Some(urk) = self.random_keys {
             if urk {
-                (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+                self.key = (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
             }
         }
+
         self.key.clone()
     }
 }
