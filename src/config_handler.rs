@@ -1,14 +1,16 @@
-use std::fs;
-use std::path::Path;
-use std::io::Write;
-use serde::{Serialize, Deserialize, Serializer};
-use std::string::String;
-use std::time::Duration;
+use crate::cipher_types::CipherTypes;
 use rand::Rng;
 use serde::Deserializer;
-use crate::cipher_types::CipherTypes;
+use serde::{Deserialize, Serialize, Serializer};
+use std::fs;
+use std::io::Write;
+use std::path::Path;
+use std::string::String;
+use std::time::Duration;
 
-const AES_KEY_DEFAULT: [u8; 16] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
+const AES_KEY_DEFAULT: [u8; 16] = [
+    0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+];
 const DES_KEY_DEFAULT: [u8; 8] = [0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF];
 const AES_PLAINTEXT_DEFAULT: [u8; 16] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const DES_PLAINTEXT_DEFAULT: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -16,28 +18,20 @@ const RUNS_DEFAULT: Option<u32> = None;
 const DELAY_DEFAULT: Option<u32> = None;
 const ALGORITHM_DEFAULT: CipherTypes = CipherTypes::HWDES;
 
-
-
 /// Config type
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(
-        serialize_with = "serialize_hex",
-        deserialize_with = "deserialize_hex"
-    )]
+    #[serde(serialize_with = "serialize_hex", deserialize_with = "deserialize_hex")]
     pub(crate) key: Vec<u8>,
 
-    #[serde(
-        serialize_with = "serialize_hex",
-        deserialize_with = "deserialize_hex"
-    )]
+    #[serde(serialize_with = "serialize_hex", deserialize_with = "deserialize_hex")]
     pub(crate) plaintext: Vec<u8>,
 
     pub runs: Option<u32>,
     pub delay: Option<u32>,
     pub algorithm: CipherTypes,
     pub random_keys: Option<bool>,
-    pub random_plaintext: Option<bool>
+    pub random_plaintext: Option<bool>,
 }
 
 fn serialize_hex<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
@@ -56,9 +50,7 @@ where
     hex::decode(&hex_string).map_err(serde::de::Error::custom)
 }
 
-
 impl Config {
-
     pub fn new(path: &String) -> Self {
         if Path::new(path).exists() {
             log::info!("Found config. Loading...");
@@ -79,10 +71,10 @@ impl Config {
     pub fn get_delay(&self) -> Duration {
         let d = self.delay.unwrap();
         match self.algorithm {
-            CipherTypes::HWAES => {Duration::from_millis(5 + d as u64)}
-            CipherTypes::HWDES => {Duration::from_millis(3 + d as u64)}
-            CipherTypes::SWAES => {Duration::from_millis(20 + d as u64)}
-            CipherTypes::SWDES => {Duration::from_millis(20 + d as u64)}
+            CipherTypes::HWAES => Duration::from_millis(5 + d as u64),
+            CipherTypes::HWDES => Duration::from_millis(3 + d as u64),
+            CipherTypes::SWAES => Duration::from_millis(20 + d as u64),
+            CipherTypes::SWDES => Duration::from_millis(20 + d as u64),
         }
     }
     pub fn get_plaintext(&mut self) -> Vec<u8> {
@@ -90,7 +82,9 @@ impl Config {
 
         if let Some(urk) = self.random_plaintext {
             if urk {
-                self.plaintext = (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+                self.plaintext = (0..self.algorithm.cipher_length())
+                    .map(|_| rng.gen())
+                    .collect()
             }
         }
 
@@ -103,7 +97,9 @@ impl Config {
 
         if let Some(urk) = self.random_keys {
             if urk {
-                self.key = (0..self.algorithm.cipher_length()).map(|_| rng.gen()).collect()
+                self.key = (0..self.algorithm.cipher_length())
+                    .map(|_| rng.gen())
+                    .collect()
             }
         }
 
@@ -111,9 +107,9 @@ impl Config {
     }
 }
 
-impl Default for Config{
+impl Default for Config {
     fn default() -> Self {
-        Config{
+        Config {
             // aes_key: AES_KEY_DEFAULT.to_vec(),
             // des_key: DES_KEY_DEFAULT.to_vec(),
             // aes_plaintext: AES_PLAINTEXT_DEFAULT.to_vec(),
@@ -128,7 +124,3 @@ impl Default for Config{
         }
     }
 }
-
-
-
-

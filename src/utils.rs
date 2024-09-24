@@ -1,11 +1,14 @@
-use regex::Regex;
 use crate::cipher_types::CipherTypes;
+use regex::Regex;
 
 pub fn validate_text(plaintext: &str, cipher_types: CipherTypes) -> Result<Vec<u8>, String> {
     let expected_length = cipher_types.cipher_length();
 
     if plaintext.len() != expected_length {
-        return Err(format!("Plaintext must be exactly {} characters long", expected_length));
+        return Err(format!(
+            "Plaintext must be exactly {} characters long",
+            expected_length
+        ));
     }
 
     // Convert the valid hexadecimal plaintext to a Vec<u8>
